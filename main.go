@@ -51,8 +51,10 @@ var (
 	curPosX       = 0
 	curPosY       = 0
 	curBrick      Brick //当前方块
+	nextBrick     Brick //下一个方块
 	curBrickIndex = 0   //当前方块方向
 	curBrickType  = 0   //当前方块种类
+	nextBrickType  = 0  //下一个方块种类
 	colorMapping  = map[rune]termbox.Attribute{
 		'k': termbox.ColorBlack,
 		'K': termbox.ColorBlack | termbox.AttrBold,
@@ -71,6 +73,7 @@ var (
 		'w': termbox.ColorWhite,
 		'W': termbox.ColorWhite | termbox.AttrBold,
 	}
+	//方块种类
 	// 0000 0
 	// 0000 0
 	// 0110 6
@@ -148,18 +151,22 @@ func createBrick(t int) (bk Brick) {
 //画图
 func draw() {
 	termbox.Clear(backColor, backColor)
-	drawBackGround(backGround, 1, 0)       //画游戏地图
-	drawBrick(curPosX, curPosY, &curBrick) //画方块
-	termbox.Flush()
+	drawBackGround(backGround, 1, 0)    //画游戏地图
+	drawBrick(curPosX, curPosY, &curBrick) 		//画当前方块
+	drawBrick( 17, 2, &nextBrick ) 	    //画下一个方块
+ 	termbox.Flush()
 }
 
 //产生一个随机方块
 func createRandBrick() {
 	curPosX = 6
 	curPosY = 0
-	curBrickType = rand.Intn(len(brickMap))
+	curBrickType = nextBrickType
 	curBrickIndex = 0
-	curBrick = createBrick(brickMap[curBrickType][curBrickIndex])
+	curBrick = nextBrick
+
+	nextBrickType = rand.Intn(len(brickMap))
+	nextBrick = createBrick(brickMap[nextBrickType][0])
 }
 
 //向下移动
@@ -201,6 +208,7 @@ func main() {
 	defer termbox.Close()
 	rand.Seed(time.Now().Unix())
 	//初始数据
+	createRandBrick()
 	createRandBrick()
 	draw()
 	//定时
