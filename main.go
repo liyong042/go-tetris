@@ -88,7 +88,7 @@ var (
 		{63, 132, 63, 132}, //倒Z型方块
 		{311, 17, 223, 74}, //倒L型方块
 		{322, 71, 113, 47}, //L型方块
-		{1111, 9, 1111, 9}, //-型方块 可以考虑使用16进制
+		{9, 1111, 9, 1111}, //-型方块 可以考虑使用16进制
 	}
 	//方块随机颜色
 	brickColors = []termbox.Attribute{
@@ -167,7 +167,7 @@ func draw() {
 	drawBackGround(backGround, 1, 0) //画游戏地图
 	drawBrickArray()
 	drawBrick(curPosX+panelX, curPosY+panelY, &curBrick, curBkColor) //画当前方块
-	drawBrick(20, 2, &nextBrick, nextBkColor)                        //画下一个方块
+	drawBrick(21, 2, &nextBrick, nextBkColor)                   //画下一个方块
 	termbox.Flush()
 }
 
@@ -249,7 +249,18 @@ func moveDown() {
 		createRandBrick()
 	}
 }
-
+//快速向下掉
+func moveEnd(){
+	for {
+		if isPut(curPosX, curPosY+1, &curBrick) {
+			curPosY += 1
+		} else {
+			addBrickToMap(curPosX, curPosY, &curBrick, curBkColor)
+			createRandBrick()
+			break
+		}
+	}
+}
 //向左
 func moveLeft(x int) {
 	if isPut(curPosX+x, curPosY, &curBrick) {
@@ -321,6 +332,8 @@ func main() {
 				moveLeft(1)
 			case termbox.KeyArrowUp:
 				moveUp()
+			case termbox.KeySpace:
+				moveEnd()
 			}
 		case <-ticker.C:
 			moveDown()
