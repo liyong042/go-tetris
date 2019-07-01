@@ -2,26 +2,37 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
+	"time"
 
 	"github.com/nsf/termbox-go"
 )
 
-func draw(ch rune) {
+func draw() {
 	w, h := termbox.Size()
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
-	termbox.SetCell(w/2, h/2, ch, termbox.ColorRed, termbox.ColorDefault)
-
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			termbox.SetCell(x, y, ' ', termbox.ColorDefault, termbox.Attribute(rand.Int()%250)+1)
+		}
+	}
 	termbox.Flush()
 }
 
 func main() {
-	termbox.Init()
+	fmt.Println("start")
+
+	err := termbox.Init()
+	if err != nil {
+		panic(err)
+	}
 	defer termbox.Close()
 
 	for {
-		//ev := termbox.PollEvent()
-		//draw(ev.Ch)
+		draw()
+		time.Sleep(2000 * time.Millisecond)
 	}
-	fmt.Println("Stop")
+
+	fmt.Println("stop")
 
 }
