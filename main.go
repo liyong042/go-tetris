@@ -3,12 +3,14 @@ package main
 import (
 	"math"
 	"math/rand"
+	"runtime"
 	"strings"
 	"time"
 
 	"github.com/nsf/termbox-go"
 )
-//随机产生方块移动, 增加键盘事件
+
+//随机产生方块移动
 //常量声明
 //游戏地图
 const (
@@ -69,43 +71,18 @@ var (
 		'w': termbox.ColorWhite,
 		'W': termbox.ColorWhite | termbox.AttrBold,
 	}
-	brickMap = [][]int{ //各种方块定义 十进制每一位表示一行
-		// 0000 0
-		// 0000 0
-		// 0110 6
-		// 0110 6
-		[]int{66, 66, 66, 66},
-		// 0000 0
-		// 0000 0
-		// 0010 2
-		// 0111 7
-		[]int{27, 131, 72, 232},
-		// 0000 0
-		// 0000 0
-		// 0011 3
-		// 0110 6
-		[]int{36, 231, 36, 231},
-		// 0000 0
-		// 0000 0
-		// 0110 6
-		// 0011 3
-		[]int{63, 132, 63, 132},
-		// 0000 0
-		// 0011 3
-		// 0001 1
-		// 0001 1
-		[]int{311, 17, 223, 74},
-		// 0000 0
-		// 0011 3
-		// 0010 1
-		// 0010 1
-		[]int{322, 71, 113, 47},
-		// Special case since 15 can't be used
-		// 0001 1
-		// 0001 1
-		// 0001 1
-		// 0001 1
-		[]int{1111, 9, 1111, 9}, //可以考虑使用16进制
+	// 0000 0
+	// 0000 0
+	// 0110 6
+	// 0110 6
+	brickMap = [][]int{ //各种方块定义 十进制每一位表示一行,数据结构中矩阵
+		{66, 66, 66, 66},   //田型方块
+		{27, 131, 72, 232}, //T型方块
+		{36, 231, 36, 231}, //Z型方块
+		{63, 132, 63, 132}, //倒Z型方块
+		{311, 17, 223, 74}, //倒L型方块
+		{322, 71, 113, 47}, //L型方块
+		{1111, 9, 1111, 9}, //-型方块 可以考虑使用16进制
 	}
 )
 
@@ -120,7 +97,6 @@ func getColorByCh(ch rune) termbox.Attribute {
 //画游戏地图
 func drawBackGround(text string, left, top int) {
 	lines := strings.Split(text, "\n")
-
 	for y, line := range lines {
 		for x, ch := range line {
 			drawBack(left+x, top+y, getColorByCh(ch))
@@ -142,9 +118,9 @@ func drawBlock(x, y int, color termbox.Attribute) {
 }
 
 //画一种方块
-func drawBrick(x, y int) {
+func drawBrick(x, y int, brick *Brick) {
 	for i := 0; i < brickSize; i++ {
-		drawBlock(x+curBrick[i].x, y+curBrick[i].y, termbox.ColorRed)
+		drawBlock(x+brick[i].x, y+brick[i].y, termbox.ColorRed)
 	}
 }
 
@@ -153,7 +129,7 @@ func createBrick(t int) (bk Brick) {
 	cnt := 0
 	horizontal := t == 9 // 这里针对 长条做了特殊处理
 	for i := 0; i <= 3; i++ {
-		p := int( math.Pow( 10, float64(3-i)) ) //取位整数
+		p := int(math.Pow(10, float64(3-i))) //取位整数
 		digit := t / p
 		t %= p
 		for j := 3; j >= 0; j-- { //行转换
@@ -172,37 +148,88 @@ func createBrick(t int) (bk Brick) {
 //画图
 func draw() {
 	termbox.Clear(backColor, backColor)
-	drawBackGround(backGround, 1, 0) //画游戏地图
-	drawBrick(curPosX, curPosY)      //画方块
+	drawBackGround(backGround, 1, 0)       //画游戏地图
+	drawBrick(curPosX, curPosY, &curBrick) //画方块
 	termbox.Flush()
 }
+
 //产生一个随机方块
-func createRandBrick(){
+func createRandBrick() {
 	curPosX = 6
 	curPosY = 0
-	curBrickType  =  rand.Intn( len(brickMap) )
+	curBrickType = rand.Intn(len(brickMap))
 	curBrickIndex = 0
 	curBrick = createBrick(brickMap[curBrickType][curBrickIndex])
+}
+
+//向下移动
+func moveDown() {
+	curPosY = curPosY + 1
+	if curPosY > 16 {
+		createRandBrick()
+	}
+	draw()
+}
+
+//向左
+func moveLeft(x int) {
+	curPosX += x
+	if curPosX > 10 {
+		curPosX = 10
+	}
+	if curPosX <= 2 {
+		curPosX = 2
+	}
+	draw()
+}
+
+//向上
+func moveUp() {
+	curBrickIndex++
+	if curBrickIndex >= brickSize {
+		curBrickIndex = 0
+	}
+	curBrick = createBrick(brickMap[curBrickType][curBrickIndex])
+	draw()
 }
 
 //
 func main() {
 	//初始界面
+	runtime.LockOSThread()
 	termbox.Init()
 	defer termbox.Close()
 	rand.Seed(time.Now().Unix())
-
 	//初始数据
 	createRandBrick()
 	draw()
-
 	//定时
 	ticker := time.NewTicker(time.Millisecond * 1000)
-	for range ticker.C {
-		curPosY = curPosY + 1
-		if curPosY > 16 {
-			createRandBrick()
+	eventChan := make(chan termbox.Event)
+	go func() {
+		for {
+			eventChan <- termbox.PollEvent()
 		}
-		draw()
+	}()
+	//增加键盘实践
+	for {
+		select {
+		case ev := <-eventChan:
+			if ev.Type != termbox.EventKey {
+				continue
+			}
+			switch ev.Key {
+			case termbox.KeyArrowDown:
+				moveDown()
+			case termbox.KeyArrowLeft:
+				moveLeft(-1)
+			case termbox.KeyArrowRight:
+				moveLeft(1)
+			case termbox.KeyArrowUp:
+				moveUp()
+			}
+		case <-ticker.C:
+			moveDown()
+		}
 	}
 }
